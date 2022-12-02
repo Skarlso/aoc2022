@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -15,7 +14,7 @@ func main() {
 	}
 	file := os.Args[1]
 
-	content, _ := ioutil.ReadFile(file)
+	content, _ := os.ReadFile(file)
 
 	split := strings.Split(string(content), "\n")
 	max := 0
