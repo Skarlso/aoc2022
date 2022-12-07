@@ -108,7 +108,7 @@ func main() {
 	min := math.MaxInt
 	for k := range fs {
 		size := calculateSize(k, fs)
-		if limit+size > need {
+		if size >= limit {
 			if size < min {
 				min = size
 			}
