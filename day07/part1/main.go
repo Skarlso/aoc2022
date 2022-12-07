@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -14,18 +15,13 @@ type File struct {
 type Dir struct {
 	name  string
 	files []File
-	Dirs  []identifier
+	dirs  []string
 	size  int
 }
 
-type identifier struct {
-	depth int
-	name  string
-}
-
 type stack struct {
-	depth int
-	s     []*Dir
+	fullPath string
+	s        []*Dir
 }
 
 func newStack() *stack {
@@ -37,12 +33,12 @@ func newStack() *stack {
 func (s *stack) pop() *Dir {
 	var d *Dir
 	d, s.s = s.s[len(s.s)-1], s.s[:len(s.s)]
-	s.depth++
+	s.fullPath = filepath.Dir(s.fullPath)
 	return d
 }
 
 func (s *stack) push(d *Dir) {
-	s.depth--
+	s.fullPath = filepath.Join(s.fullPath, d.name)
 	s.s = append(s.s, d)
 }
 
@@ -59,7 +55,7 @@ func main() {
 	tree := newStack()
 	var (
 		currentDir *Dir
-		fs         = make(map[identifier]*Dir)
+		fs         = make(map[string]*Dir)
 	)
 	for _, v := range split {
 		if v[0] == '$' {
@@ -69,19 +65,13 @@ func main() {
 				if dirName == ".." {
 					currentDir = tree.pop()
 				} else {
-					if d, ok := fs[identifier{
-						name:  dirName,
-						depth: tree.depth,
-					}]; ok {
+					if d, ok := fs[filepath.Join(tree.fullPath, dirName)]; ok {
 						currentDir = d
 					} else {
 						currentDir = &Dir{
 							name: dirName,
 						}
-						fs[identifier{
-							name:  dirName,
-							depth: tree.depth,
-						}] = currentDir
+						fs[filepath.Join(tree.fullPath, dirName)] = currentDir
 					}
 					tree.push(currentDir)
 				}
@@ -90,7 +80,7 @@ func main() {
 			if strings.HasPrefix(v, "dir") {
 				var dirName string
 				fmt.Sscanf(v, "dir %s", &dirName)
-				currentDir.Dirs = append(currentDir.Dirs, identifier{name: dirName, depth: tree.depth})
+				currentDir.dirs = append(currentDir.dirs, filepath.Join(tree.fullPath, dirName))
 			} else {
 				var (
 					name string
@@ -101,7 +91,7 @@ func main() {
 					name: name,
 					size: size,
 				})
-				// currentDir.size += size
+				currentDir.size += size
 			}
 		}
 	}
@@ -113,17 +103,14 @@ func main() {
 		if size <= limit {
 			totalSize += size
 		}
-		fmt.Printf("total size of %s is: %d\n", k.name, size)
+		fmt.Printf("total size of %s is: %d\n", k, size)
 	}
 	fmt.Println("total size: ", totalSize)
 }
 
-func calculateSize(k identifier, fs map[identifier]*Dir) int {
-	size := 0
-	for _, f := range fs[k].files {
-		size += f.size
-	}
-	for _, d := range fs[k].Dirs {
+func calculateSize(k string, fs map[string]*Dir) int {
+	size := fs[k].size
+	for _, d := range fs[k].dirs {
 		size += calculateSize(d, fs)
 	}
 	return size
