@@ -44,12 +44,12 @@ func main() {
 	}
 
 	trees := 0
-	for i := 1; i < len(forest)-1; i++ {
-		for j := 1; j < len(forest[i])-1; j++ {
+	for i := 0; i < len(forest); i++ {
+		for j := 0; j < len(forest[i]); j++ {
 			startingPoint := point{x: j, y: i}
-			// fmt.Println(forest[startingPoint.y][startingPoint.x])
 
 			if isVisible(startingPoint, forest) {
+				// fmt.Println("visible: ", forest[startingPoint.y][startingPoint.x])
 				trees++
 			}
 		}

@@ -16,8 +16,8 @@ type direction struct {
 }
 
 var directions = []direction{
-	{x: 0, y: +1}, //up
-	{x: 0, y: -1}, //down
+	{x: 0, y: +1}, //down
+	{x: 0, y: -1}, //up
 	{x: -1, y: 0}, //left
 	{x: +1, y: 0}, //right
 }
@@ -43,39 +43,54 @@ func main() {
 		forest = append(forest, row)
 	}
 
-	trees := 0
-	for i := 1; i < len(forest)-1; i++ {
-		for j := 1; j < len(forest[i])-1; j++ {
-			startingPoint := point{i, j}
+	max := 0
+	for i := 0; i < len(forest); i++ {
+		for j := 0; j < len(forest[i]); j++ {
+			startingPoint := point{x: j, y: i}
 
-			if isVisible(startingPoint, forest) {
-				trees++
+			if score := score(startingPoint, forest); score > max {
+				max = score
 			}
 		}
 	}
 
-	fmt.Println("total hidden trees: ", trees)
+	fmt.Println("max score: ", max)
 }
 
-func isVisible(sp point, forest [][]int) bool {
+func score(sp point, forest [][]int) int {
 	// If we find a single path which leads to the edge, we know its visible.
 	// But it can only go straight.
+	score := 1
 	for _, d := range directions {
 		p := sp
 
+		p.x += d.x
+		p.y += d.y
+		// fmt.Println("starting point: ", sp)
+		current := 1
 		for {
-			if p.x+d.x == 0 || p.x+d.x >= len(forest[p.y+d.y])-1 || p.y+d.y == 0 || p.y+d.y >= len(forest)-1 {
-				return false
-			}
-			if forest[p.y+d.y][p.x+d.x] >= forest[sp.y][sp.x] {
+			// fmt.Println("current: ", current)
+			if p.x < 0 || p.y < 0 || p.y == len(forest) || p.x == len(forest[p.y]) {
+				// fmt.Println("reached end")
+				current = 0
 				break
 			}
 
+			// fmt.Printf("comparing origin '%d' with '%d'\n", forest[sp.y][sp.x], forest[p.y][p.x])
+			if forest[p.y][p.x] < forest[sp.y][sp.x] {
+				// fmt.Println("break")
+				break
+			}
+			current++
+			// if current == 4 {
+			// 	fmt.Println("spot and number: ", sp, forest[sp.y][sp.x])
+			// }
+			fmt.Println("what: ", current)
 			p.x += d.x
 			p.y += d.y
 		}
-
+		score *= current
 	}
 
-	return true
+	return score
 }
