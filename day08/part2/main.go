@@ -46,7 +46,7 @@ func main() {
 	max := 0
 	for i := 0; i < len(forest); i++ {
 		for j := 0; j < len(forest[i]); j++ {
-			startingPoint := point{x: j, y: i}
+			startingPoint := point{y: i, x: j}
 
 			if score := score(startingPoint, forest); score > max {
 				max = score
@@ -58,34 +58,23 @@ func main() {
 }
 
 func score(sp point, forest [][]int) int {
-	// If we find a single path which leads to the edge, we know its visible.
-	// But it can only go straight.
 	score := 1
 	for _, d := range directions {
 		p := sp
 
 		p.x += d.x
 		p.y += d.y
-		// fmt.Println("starting point: ", sp)
-		current := 1
+		current := 0
 		for {
-			// fmt.Println("current: ", current)
 			if p.x < 0 || p.y < 0 || p.y == len(forest) || p.x == len(forest[p.y]) {
-				// fmt.Println("reached end")
-				current = 0
 				break
 			}
 
-			// fmt.Printf("comparing origin '%d' with '%d'\n", forest[sp.y][sp.x], forest[p.y][p.x])
-			if forest[p.y][p.x] < forest[sp.y][sp.x] {
-				// fmt.Println("break")
+			if forest[p.y][p.x] >= forest[sp.y][sp.x] {
+				current++
 				break
 			}
 			current++
-			// if current == 4 {
-			// 	fmt.Println("spot and number: ", sp, forest[sp.y][sp.x])
-			// }
-			fmt.Println("what: ", current)
 			p.x += d.x
 			p.y += d.y
 		}
