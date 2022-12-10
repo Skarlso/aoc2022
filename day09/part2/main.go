@@ -54,9 +54,8 @@ func main() {
 		)
 		fmt.Sscanf(line, "%s %d", &dir, &steps)
 		d := directions[dir]
-		// i will track how many steps to take.
-		for i := 1; i < steps; i++ {
 
+		for i := 0; i < steps; i++ {
 			r.knots[0].x += d.x
 			r.knots[0].y += d.y
 
@@ -65,6 +64,19 @@ func main() {
 				// this shouldn't be head, but the previous knot's position.
 				x, y := last.x-r.knots[i].x, last.y-r.knots[i].y
 				if abs(x) > 1 || abs(y) > 1 {
+					if abs(x) > 1 {
+						if x < 0 {
+							x = -1
+						} else {
+							x = 1
+						}
+					} else if abs(y) > 1 {
+						if y < 0 {
+							y = -1
+						} else {
+							y = 1
+						}
+					}
 					r.knots[i].x += x
 					r.knots[i].y += y
 				}
