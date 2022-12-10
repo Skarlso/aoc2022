@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -63,30 +64,37 @@ func main() {
 			for i := 1; i < len(r.knots); i++ {
 				// this shouldn't be head, but the previous knot's position.
 				x, y := last.x-r.knots[i].x, last.y-r.knots[i].y
+
+				// so if both are above that means it needs to move diagonally
+				// if one of them equals, we only decrease the one that is higher than one.
 				if abs(x) > 1 || abs(y) > 1 {
+					// if abs(x) == 0 || abs(y) == 0 {
+					// we only need to move one of the positions
 					if abs(x) > 1 {
 						if x < 0 {
 							x = -1
-						} else {
+						} else if x > 0 {
 							x = 1
 						}
-					} else if abs(y) > 1 {
+					}
+					if abs(y) > 1 {
 						if y < 0 {
 							y = -1
-						} else {
+						} else if y > 0 {
 							y = 1
 						}
 					}
+					// }
 					r.knots[i].x += x
 					r.knots[i].y += y
 				}
 				last = r.knots[i]
 			}
-
 			grid[point{x: last.x, y: last.y}]++
+			// drawGrid(r.knots)
 		}
 	}
-	fmt.Println(grid)
+	// fmt.Println(grid)
 	fmt.Println(len(grid))
 }
 
@@ -95,4 +103,24 @@ func abs(x int) int {
 		return -x
 	}
 	return x
+}
+
+func drawGrid(knots []point) {
+	grid := [30][30]string{}
+	// +15
+	for i, p := range knots {
+		grid[p.y+15][p.x+15] = strconv.Itoa(i)
+	}
+	for y := 0; y < len(grid); y++ {
+		for x := 0; x < len(grid[y]); x++ {
+			if grid[y][x] == "" {
+				fmt.Print(".")
+			} else {
+				fmt.Print(grid[y][x])
+			}
+			grid[15][15] = "S"
+		}
+		fmt.Println()
+	}
+	fmt.Println("=======================")
 }
