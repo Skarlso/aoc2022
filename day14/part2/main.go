@@ -74,29 +74,30 @@ func main() {
 		}
 	}
 
+	maxy += 2
 	draw(minx, maxx, maxy, grid)
 	// A grain is falling until it reached the maximum y coordinate.
 	count := 0
-	start := point{x: 500, y: 0}
+	start := &point{x: 500, y: 0}
 	for {
 		// I don't think we need a _visited_ because we'll be going only DOWN and left and right if there is space.
 		// if we bump into a location that has an item in it and there is nowhere to go, then we stop the loop anyways.
-		queue := []*point{&start}
+		queue := []*point{start}
 		var current *point
 
 		for len(queue) > 0 {
 			current, queue = queue[0], queue[1:]
-
-			if current.y > maxy {
-				fmt.Println(*current)
-				fmt.Println("maximum depth: ", maxy)
-				fmt.Println("number of sand grains: ", count)
-				os.Exit(0)
-			}
-
-			next := falling(current, grid)
+			next := falling(current, grid, maxy)
 			// There is nowhere to go
 			if next == nil {
+				// If we just started but there is nowhere for the grain to fall to
+				// we can assume that the grid is full.
+				if current == start {
+					fmt.Println("maximum depth: ", maxy)
+					// plus one for the starting point
+					fmt.Println("number of sand grains: ", count+1)
+					os.Exit(0)
+				}
 				// save the current location as the grain coming to rest.
 				grid[*current] = true
 				break
@@ -106,12 +107,12 @@ func main() {
 
 		count++
 	}
-	// draw(minx, maxx, maxy, grid)
-	// fmt.Println("maximum depth: ", maxy)
-	// fmt.Println("number of sand grains: ", count)
 }
 
-func falling(p *point, grid map[point]bool) *point {
+func falling(p *point, grid map[point]bool, maxy int) *point {
+	if p.y+1 == maxy {
+		return nil
+	}
 	if !grid[point{x: p.x, y: p.y + 1}] {
 		return &point{x: p.x, y: p.y + 1}
 	} else {
