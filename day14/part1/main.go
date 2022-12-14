@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"strings"
 )
@@ -22,8 +21,6 @@ func main() {
 	split := strings.Split(string(content), "\n")
 	grid := make(map[point]bool)
 	maxy := 0
-	maxx := 0
-	minx := math.MaxInt
 	for _, line := range split {
 		borders := strings.Split(line, " -> ")
 		for i := 0; i < len(borders)-1; i++ {
@@ -36,19 +33,6 @@ func main() {
 			if sToY > maxy {
 				maxy = sToY
 			}
-			if sToX > maxx {
-				maxx = sToX
-			}
-			if sFromX > maxx {
-				maxx = sFromX
-			}
-			if sFromX < minx {
-				minx = sFromX
-			}
-			if sToX < minx {
-				minx = sToX
-			}
-
 			var (
 				fromx, fromy, tox, toy int
 			)
@@ -74,7 +58,6 @@ func main() {
 		}
 	}
 
-	draw(minx, maxx, maxy, grid)
 	// A grain is falling until it reached the maximum y coordinate.
 	count := 0
 	start := point{x: 500, y: 0}
@@ -105,9 +88,6 @@ func main() {
 
 		count++
 	}
-	// draw(minx, maxx, maxy, grid)
-	// fmt.Println("maximum depth: ", maxy)
-	// fmt.Println("number of sand grains: ", count)
 }
 
 func falling(p *point, grid map[point]bool) *point {
@@ -121,17 +101,4 @@ func falling(p *point, grid map[point]bool) *point {
 		}
 	}
 	return nil
-}
-
-func draw(fromx, maxx, maxy int, grid map[point]bool) {
-	for y := 0; y <= maxy; y++ {
-		for x := fromx; x <= maxx; x++ {
-			if grid[point{x: x, y: y}] {
-				fmt.Print("#")
-			} else {
-				fmt.Print(".")
-			}
-		}
-		fmt.Println()
-	}
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"strings"
 )
@@ -22,8 +21,6 @@ func main() {
 	split := strings.Split(string(content), "\n")
 	grid := make(map[point]bool)
 	maxy := 0
-	maxx := 0
-	minx := math.MaxInt
 	for _, line := range split {
 		borders := strings.Split(line, " -> ")
 		for i := 0; i < len(borders)-1; i++ {
@@ -36,19 +33,8 @@ func main() {
 			if sToY > maxy {
 				maxy = sToY
 			}
-			if sToX > maxx {
-				maxx = sToX
-			}
-			if sFromX > maxx {
-				maxx = sFromX
-			}
-			if sFromX < minx {
-				minx = sFromX
-			}
-			if sToX < minx {
-				minx = sToX
-			}
 
+			// Select from where to what to draw the rocks.
 			var (
 				fromx, fromy, tox, toy int
 			)
@@ -75,13 +61,10 @@ func main() {
 	}
 
 	maxy += 2
-	draw(minx, maxx, maxy, grid)
 	// A grain is falling until it reached the maximum y coordinate.
 	count := 0
 	start := &point{x: 500, y: 0}
 	for {
-		// I don't think we need a _visited_ because we'll be going only DOWN and left and right if there is space.
-		// if we bump into a location that has an item in it and there is nowhere to go, then we stop the loop anyways.
 		queue := []*point{start}
 		var current *point
 
@@ -123,17 +106,4 @@ func falling(p *point, grid map[point]bool, maxy int) *point {
 		}
 	}
 	return nil
-}
-
-func draw(fromx, maxx, maxy int, grid map[point]bool) {
-	for y := 0; y <= maxy; y++ {
-		for x := fromx; x <= maxx; x++ {
-			if grid[point{x: x, y: y}] {
-				fmt.Print("#")
-			} else {
-				fmt.Print(".")
-			}
-		}
-		fmt.Println()
-	}
 }
