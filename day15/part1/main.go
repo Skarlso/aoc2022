@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+type sensor struct {
+	p        point
+	coverage int
+	beacon   point
+}
+
 type point struct {
 	x, y int
 }
@@ -25,14 +31,11 @@ func main() {
 		log.Fatal(err)
 	}
 	content, _ := os.ReadFile(file)
-
 	split := strings.Split(string(content), "\n")
-	// This could just be bool but I'm using string so I can visually verify that things look okay.
-	// End this helped me a lot because I saw that I needed distance <= maxDistance instead of distance < maxDistance.
-	grid := make(map[point]string)
+	sensors := make([]sensor, 0)
 	var (
-		minx, miny = math.MaxInt, math.MaxInt
-		maxx, maxy int
+		minx = math.MaxInt
+		maxx int
 	)
 	for _, line := range split {
 		var (
@@ -40,101 +43,43 @@ func main() {
 			beaconx, beacony int
 		)
 		fmt.Sscanf(line, "Sensor at x=%d, y=%d: closest beacon is at x=%d, y=%d", &sensorx, &sensory, &beaconx, &beacony)
-		sensor := point{x: sensorx, y: sensory}
+		sensorP := point{x: sensorx, y: sensory}
 		beacon := point{x: beaconx, y: beacony}
-		grid[sensor] = "S"
-		grid[beacon] = "B"
-		markCoverageForSensor(sensor, beacon, grid)
-	}
-	for k := range grid {
-		if k.x > maxx {
-			maxx = k.x
+
+		s := sensor{
+			p:        sensorP,
+			coverage: distance(sensorP.x, beacon.x, sensorP.y, beacon.y),
+			beacon:   beacon,
 		}
-		if k.x < minx {
-			minx = k.x
+		sensors = append(sensors, s)
+
+		if s.p.x-s.coverage < minx {
+			minx = s.p.x - s.coverage
 		}
-		if k.y > maxy {
-			maxy = k.y
-		}
-		if k.y < miny {
-			miny = k.y
+		if s.p.x+s.coverage > maxx {
+			maxx = s.p.x + s.coverage
 		}
 	}
-	display(grid, minx, maxx, miny, maxy)
 
 	notABeacon := 0
-	for x := minx; x < maxx; x++ {
-		if grid[point{x: x, y: row}] == "#" {
+	for x := minx; x <= maxx; x++ {
+		p := point{x: x, y: row}
+		inRange := false
+		for _, s := range sensors {
+			distanceToSensor := distance(p.x, s.p.x, p.y, s.p.y)
+			if distanceToSensor <= s.coverage {
+				inRange = true
+				break
+			}
+		}
+
+		if inRange {
 			notABeacon++
 		}
 	}
 
-	fmt.Println("not a beacon: ", notABeacon)
-}
-
-func display(grid map[point]string, minx, maxx, miny, maxy int) {
-	for y := miny; y <= maxy; y++ {
-		fmt.Printf("%d: ", y)
-		for x := minx; x <= maxx; x++ {
-			if v, ok := grid[point{x: x, y: y}]; ok {
-				fmt.Print(v)
-			} else {
-				fmt.Print(".")
-			}
-		}
-		fmt.Println()
-	}
-}
-
-func markCoverageForSensor(sensor, beacon point, grid map[point]string) {
-	maxDistance := distance(sensor.x, beacon.x, sensor.y, beacon.y)
-
-	queue := []point{sensor}
-	seen := map[point]bool{sensor: true}
-	var current point
-
-	for len(queue) > 0 {
-		current, queue = queue[0], queue[1:]
-
-		for _, next := range neighbour(maxDistance, sensor, current) {
-			if !seen[next] {
-				seen[next] = true
-				if grid[next] != "B" && grid[next] != "S" {
-					grid[next] = "#"
-				}
-				queue = append(queue, next)
-			}
-		}
-	}
-
-}
-
-var directions = []point{
-	// basic directions
-	{x: -1, y: 0}, // left
-	{x: 0, y: -1}, // up
-	{x: 1, y: 0},  // right
-	{x: 0, y: 1},  // down
-
-	// diagonally
-	{x: -1, y: -1}, // left, up
-	{x: 1, y: -1},  // right, up
-	{x: 1, y: 1},   // right, down
-	{x: -1, y: 1},  // left, down
-}
-
-func neighbour(maxDistanceFromOriginal int, original, current point) []point {
-	var result []point
-	for _, d := range directions {
-		next := point{x: current.x + d.x, y: current.y + d.y}
-
-		distance := distance(original.x, next.x, original.y, next.y)
-		if distance <= maxDistanceFromOriginal {
-			result = append(result, next)
-		}
-	}
-
-	return result
+	// -1 for S
+	fmt.Println("not a beacon: ", notABeacon-1)
 }
 
 func distance(x1, x2, y1, y2 int) int {
