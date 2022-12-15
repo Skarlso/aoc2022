@@ -2,9 +2,16 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strings"
 )
+
+type sensor struct {
+	p        point
+	coverage int
+	beacon   point
+}
 
 type point struct {
 	x, y int
@@ -17,93 +24,110 @@ func main() {
 	}
 	file := os.Args[1]
 	content, _ := os.ReadFile(file)
-
 	split := strings.Split(string(content), "\n")
-	grid := make(map[point]bool)
-	maxy := 0
+	sensors := make([]sensor, 0)
+	var (
+		minx = math.MaxInt
+		maxx int
+	)
 	for _, line := range split {
-		borders := strings.Split(line, " -> ")
-		for i := 0; i < len(borders)-1; i++ {
-			var (
-				sFromX, sFromY int
-				sToX, sToY     int
-			)
-			fmt.Sscanf(borders[i], "%d,%d", &sFromX, &sFromY)
-			fmt.Sscanf(borders[i+1], "%d,%d", &sToX, &sToY)
-			if sToY > maxy {
-				maxy = sToY
-			}
+		var (
+			sensorx, sensory int
+			beaconx, beacony int
+		)
+		fmt.Sscanf(line, "Sensor at x=%d, y=%d: closest beacon is at x=%d, y=%d", &sensorx, &sensory, &beaconx, &beacony)
+		sensorP := point{x: sensorx, y: sensory}
+		beacon := point{x: beaconx, y: beacony}
 
-			// Select from where to what to draw the rocks.
-			var (
-				fromx, fromy, tox, toy int
-			)
-			if sFromX > sToX {
-				tox = sFromX
-				fromx = sToX
-			} else {
-				fromx = sFromX
-				tox = sToX
-			}
-			if sFromY > sToY {
-				fromy = sToY
-				toy = sFromY
-			} else {
-				fromy = sFromY
-				toy = sToY
-			}
-			for x := fromx; x <= tox; x++ {
-				for y := fromy; y <= toy; y++ {
-					grid[point{x: x, y: y}] = true
-				}
-			}
+		s := sensor{
+			p:        sensorP,
+			coverage: distance(sensorP.x, beacon.x, sensorP.y, beacon.y),
+			beacon:   beacon,
+		}
+		sensors = append(sensors, s)
+
+		if s.p.x-s.coverage < minx {
+			minx = s.p.x - s.coverage
+		}
+		if s.p.x+s.coverage > maxx {
+			maxx = s.p.x + s.coverage
 		}
 	}
 
-	maxy += 2
-	// A grain is falling until it reached the maximum y coordinate.
-	count := 0
-	start := &point{x: 500, y: 0}
-	for {
-		queue := []*point{start}
-		var current *point
+	// Walk through the perimeter of each beacon's area.
+	// For each sensor, construct an area of points that you check.
+	// Add those points into a list of points. ( skip if below 0 or above limit )
+	// For each of those points then check if they are within the
+	// distance of other sensors.
 
-		for len(queue) > 0 {
-			current, queue = queue[0], queue[1:]
-			next := falling(current, grid, maxy)
-			// There is nowhere to go
-			if next == nil {
-				// If we just started but there is nowhere for the grain to fall to
-				// we can assume that the grid is full.
-				if current == start {
-					fmt.Println("maximum depth: ", maxy)
-					// plus one for the starting point
-					fmt.Println("number of sand grains: ", count+1)
-					os.Exit(0)
-				}
-				// save the current location as the grain coming to rest.
-				grid[*current] = true
+	// It's a map to avoid duplicates from overlapping sensors.
+	limit := 4000000
+	// limit := 20
+	possiblePoints := make(map[point]bool)
+	for _, sensor := range sensors {
+		leftCorner := point{x: sensor.p.x - sensor.coverage - 1, y: sensor.p.y}
+		rightCorner := point{x: sensor.p.x + sensor.coverage + 1, y: sensor.p.y}
+		upperCorner := point{x: sensor.p.x, y: sensor.p.y + sensor.coverage + 1}
+		lowerCorner := point{x: sensor.p.x, y: sensor.p.y - sensor.coverage - 1}
+
+		start := leftCorner
+		possiblePoints[start] = true
+		for start != lowerCorner {
+			start.x++
+			start.y--
+			possiblePoints[start] = true
+		}
+		start = lowerCorner
+		possiblePoints[lowerCorner] = true
+		for start != rightCorner {
+			start.x++
+			start.y++
+			possiblePoints[start] = true
+		}
+		start = rightCorner
+		possiblePoints[start] = true
+		for start != upperCorner {
+			start.x--
+			start.y++
+			possiblePoints[start] = true
+		}
+		start = upperCorner
+		possiblePoints[start] = true
+		for start != leftCorner {
+			start.x--
+			start.y--
+			possiblePoints[start] = true
+		}
+	}
+
+	fmt.Println("length of possible points: ", len(possiblePoints))
+	for k := range possiblePoints {
+		if k.x < 0 || k.y < 0 || k.x > limit || k.y > limit {
+			continue
+		}
+		inRange := false
+		for _, s := range sensors {
+			distanceToSensor := distance(k.x, s.p.x, k.y, s.p.y)
+			if distanceToSensor <= s.coverage {
+				inRange = true
 				break
 			}
-			queue = append(queue, next)
 		}
-
-		count++
+		if !inRange {
+			fmt.Println("x, y: ", k)
+			fmt.Println("frequency: ", k.x*limit+k.y)
+			os.Exit(0)
+		}
 	}
 }
 
-func falling(p *point, grid map[point]bool, maxy int) *point {
-	if p.y+1 == maxy {
-		return nil
+func distance(x1, x2, y1, y2 int) int {
+	return abs(x1-x2) + abs(y1-y2)
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
 	}
-	if !grid[point{x: p.x, y: p.y + 1}] {
-		return &point{x: p.x, y: p.y + 1}
-	} else {
-		if !grid[point{x: p.x - 1, y: p.y + 1}] {
-			return &point{x: p.x - 1, y: p.y + 1}
-		} else if !grid[point{x: p.x + 1, y: p.y + 1}] {
-			return &point{x: p.x + 1, y: p.y + 1}
-		}
-	}
-	return nil
+	return x
 }
