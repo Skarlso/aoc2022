@@ -2,19 +2,21 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"os"
+	"strconv"
 	"strings"
 )
 
-type sensor struct {
-	p        point
-	coverage int
-	beacon   point
-}
-
-type point struct {
-	x, y int
+type monkey struct {
+	name     string
+	opString string
+	op       func(a, b int) int
+	eq       func(a, b int) bool
+	// if not nil, that means we need to look at the operation to compute it
+	value *int
+	// there are no situations in which it's a name and a number. It's always name OP name
+	a string
+	b string
 }
 
 func main() {
@@ -25,109 +27,88 @@ func main() {
 	file := os.Args[1]
 	content, _ := os.ReadFile(file)
 	split := strings.Split(string(content), "\n")
-	sensors := make([]sensor, 0)
-	var (
-		minx = math.MaxInt
-		maxx int
-	)
+
+	monkeys := make(map[string]monkey)
 	for _, line := range split {
-		var (
-			sensorx, sensory int
-			beaconx, beacony int
-		)
-		fmt.Sscanf(line, "Sensor at x=%d, y=%d: closest beacon is at x=%d, y=%d", &sensorx, &sensory, &beaconx, &beacony)
-		sensorP := point{x: sensorx, y: sensory}
-		beacon := point{x: beaconx, y: beacony}
-
-		s := sensor{
-			p:        sensorP,
-			coverage: distance(sensorP.x, beacon.x, sensorP.y, beacon.y),
-			beacon:   beacon,
+		split := strings.Split(line, ": ")
+		name := split[0]
+		m := monkey{
+			name: name,
 		}
-		sensors = append(sensors, s)
-
-		if s.p.x-s.coverage < minx {
-			minx = s.p.x - s.coverage
-		}
-		if s.p.x+s.coverage > maxx {
-			maxx = s.p.x + s.coverage
-		}
-	}
-
-	// Walk through the perimeter of each beacon's area.
-	// For each sensor, construct an area of points that you check.
-	// Add those points into a list of points. ( skip if below 0 or above limit )
-	// For each of those points then check if they are within the
-	// distance of other sensors.
-
-	// It's a map to avoid duplicates from overlapping sensors.
-	limit := 4000000
-	// limit := 20
-	possiblePoints := make(map[point]bool)
-	for _, sensor := range sensors {
-		leftCorner := point{x: sensor.p.x - sensor.coverage - 1, y: sensor.p.y}
-		rightCorner := point{x: sensor.p.x + sensor.coverage + 1, y: sensor.p.y}
-		upperCorner := point{x: sensor.p.x, y: sensor.p.y + sensor.coverage + 1}
-		lowerCorner := point{x: sensor.p.x, y: sensor.p.y - sensor.coverage - 1}
-
-		start := leftCorner
-		possiblePoints[start] = true
-		for start != lowerCorner {
-			start.x++
-			start.y--
-			possiblePoints[start] = true
-		}
-		start = lowerCorner
-		possiblePoints[lowerCorner] = true
-		for start != rightCorner {
-			start.x++
-			start.y++
-			possiblePoints[start] = true
-		}
-		start = rightCorner
-		possiblePoints[start] = true
-		for start != upperCorner {
-			start.x--
-			start.y++
-			possiblePoints[start] = true
-		}
-		start = upperCorner
-		possiblePoints[start] = true
-		for start != leftCorner {
-			start.x--
-			start.y--
-			possiblePoints[start] = true
-		}
-	}
-
-	fmt.Println("length of possible points: ", len(possiblePoints))
-	for k := range possiblePoints {
-		if k.x < 0 || k.y < 0 || k.x > limit || k.y > limit {
-			continue
-		}
-		inRange := false
-		for _, s := range sensors {
-			distanceToSensor := distance(k.x, s.p.x, k.y, s.p.y)
-			if distanceToSensor <= s.coverage {
-				inRange = true
-				break
+		n, err := strconv.Atoi(split[1])
+		if err != nil {
+			var (
+				a, op, b string
+			)
+			fmt.Sscanf(split[1], "%s %s %s", &a, &op, &b)
+			// fmt.Printf("a: '%s', b: '%s', op: '%s'\n", a, b, op)
+			switch op {
+			case "/":
+				m.op = func(a, b int) int { return a / b }
+				m.opString = "/"
+			case "+":
+				m.op = func(a, b int) int { return a + b }
+				m.opString = "+"
+			case "-":
+				m.op = func(a, b int) int { return a - b }
+				m.opString = "-"
+			case "*":
+				m.op = func(a, b int) int { return a * b }
+				m.opString = "*"
+			case "=":
+				m.eq = func(a, b int) bool { return a == b }
+				m.opString = "="
 			}
+			m.a = a
+			m.b = b
+		} else {
+			m.value = &n
 		}
-		if !inRange {
-			fmt.Println("x, y: ", k)
-			fmt.Println("frequency: ", k.x*limit+k.y)
-			os.Exit(0)
-		}
+
+		monkeys[name] = m
 	}
+
+	yelled := -1
+	for yelled == -1 {
+		yelled = solve("root", monkeys)
+		humn := monkeys["humn"]
+		v := *humn.value
+		v++
+		humn.value = &v
+		monkeys["humn"] = humn
+	}
+	fmt.Println("monkey yelled: ", yelled)
 }
 
-func distance(x1, x2, y1, y2 int) int {
-	return abs(x1-x2) + abs(y1-y2)
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
+/*
+comparing: a: '149' b: '150'
+301 3 -
+2 298 *
+4 596 +
+600 4 /
+32 2 -
+30 5 *
+comparing: a: '150' b: '150'
+monkey yelled:  301
+*/
+func solve(name string, monkeys map[string]monkey) int {
+	m := monkeys[name]
+	if v := m.value; v != nil {
+		return *v
 	}
-	return x
+
+	a := solve(m.a, monkeys)
+	b := solve(m.b, monkeys)
+	if m.eq != nil {
+		// solve for the monkey equality function
+		fmt.Printf("comparing: a: '%d' b: '%d'\n", a, b)
+		if m.eq(a, b) {
+			return *monkeys["humn"].value
+		} else {
+			return -1
+		}
+	}
+	fmt.Println(a, b, m.opString)
+
+	return m.op(a, b)
 }
