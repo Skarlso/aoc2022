@@ -19,6 +19,8 @@ type monkey struct {
 	b string
 }
 
+// realized that one side is always the same. Could have used binary search to find the right value,
+// but I just increased until I hit the right number.
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: go run part1/main.go [file]")
@@ -68,8 +70,8 @@ func main() {
 		monkeys[name] = m
 	}
 
-	yelled := -1
-	for yelled == -1 {
+	var yelled int
+	for yelled == 0 {
 		yelled = solve("root", monkeys)
 		humn := monkeys["humn"]
 		v := *humn.value
@@ -102,13 +104,13 @@ func solve(name string, monkeys map[string]monkey) int {
 	if m.eq != nil {
 		// solve for the monkey equality function
 		fmt.Printf("comparing: a: '%d' b: '%d'\n", a, b)
+		fmt.Println("humn: ", *monkeys["humn"].value)
 		if m.eq(a, b) {
 			return *monkeys["humn"].value
 		} else {
-			return -1
+			return 0
 		}
 	}
-	fmt.Println(a, b, m.opString)
 
 	return m.op(a, b)
 }
