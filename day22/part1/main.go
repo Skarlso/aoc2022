@@ -88,11 +88,11 @@ func main() {
 		// We set all rows to 0 for Y except for the borders so we can modulo freely without
 		// messing up the down or up move.
 		if y == 0 {
-			r.minY = 1
-			r.maxY = 1
+			r.minY = 0
+			r.maxY = -1
 		} else {
-			r.minY = 1
-			r.maxY = 1
+			r.minY = -1
+			r.maxY = -1
 		}
 		// if there is a row before this row
 		if y-1 > 0 {
@@ -128,17 +128,43 @@ func main() {
 				// if next position that we are going to move to is a wall, break.
 				currentRow := rows[s.position.y]
 				// +1 to allow to check if the next move would be a wall item.
-				x := mod(s.position.x+directions[s.direction].x, currentRow.maxX+1)
-				if x == 0 && s.position.x != 0 { // only change it if we weren't at 0 to begin with
-					x += currentRow.minX
+				x := s.position.x + directions[s.direction].x
+				if x > currentRow.maxX { // only change it if we weren't at 0 to begin with
+					x = currentRow.minX
 				}
-				y := mod(s.position.y+directions[s.direction].y, currentRow.maxY+1)
-				if y == 0 && s.position.y != 0 {
-					y += currentRow.minY
+				// y is not modulo-d because I'm not parsing the tiles nicely..
+				y := s.position.y + directions[s.direction].y
+				if currentRow.maxY > -1 && y == currentRow.maxY+1 {
+					// fmt.Println("x: ", x)
+					// fmt.Println("next row's minx, maxx: ", rows[y].minX, rows[y].maxX)
+					if y > len(rows)-1 {
+						y = len(rows) - 1
+					}
+					if x <= rows[y].maxX && x >= rows[y].minX {
+						// do nothing
+						// fmt.Println("let it increase")
+						if y < 0 {
+							y = 0
+						}
+					} else {
+						y = currentRow.minY
+						if y < 0 {
+							y = 0
+						}
+					}
 				}
-				fmt.Printf("moving to x: %d; y: %d\n", x, y)
+				// fmt.Printf("moving to x: %d; y: %d\n", x, y)
+				if y < 0 {
+					y = 0
+				}
+				if y > len(rows)-1 {
+					y = len(rows) - 1
+				}
+				if x < 0 {
+					x = 0
+				}
 				if rows[y].items[x] == "#" {
-					fmt.Println("hit wall")
+					// fmt.Println("hit wall")
 					break
 				}
 				s.position.x = x
@@ -163,13 +189,13 @@ func main() {
 
 			// rotate in direction c
 			if c == 'L' {
-				fmt.Println("rotating left from: ", s.direction)
+				// fmt.Println("rotating left from: ", s.direction)
 				s.direction = mod(s.direction-1, len(directions))
-				fmt.Println("rotating left to: ", s.direction)
+				// fmt.Println("rotating left to: ", s.direction)
 			} else if c == 'R' {
-				fmt.Println("rotating right from: ", s.direction)
+				// fmt.Println("rotating right from: ", s.direction)
 				s.direction = mod(s.direction+1, len(directions))
-				fmt.Println("rotating right to: ", s.direction)
+				// fmt.Println("rotating right to: ", s.direction)
 			}
 
 			// clear number, start again
@@ -181,17 +207,40 @@ func main() {
 			for m := 0; m < n; m++ {
 				// if next position that we are going to move to is a wall, break.
 				currentRow := rows[s.position.y]
-				x := mod(s.position.x+directions[s.direction].x, currentRow.maxX)
-				if x == 0 && s.position.x != 0 { // only change it if we weren't at 0 to begin with
-					x += currentRow.minX
+				x := s.position.x + directions[s.direction].x
+				if x > currentRow.maxX { // only change it if we weren't at 0 to begin with
+					x = currentRow.minX
 				}
-				y := mod(s.position.y+directions[s.direction].y, currentRow.maxY)
-				if y == 0 && s.position.y != 0 {
-					y += currentRow.minY
+				// y is not modulo-d because I'm not parsing the tiles nicely..
+				y := s.position.y + directions[s.direction].y
+				if currentRow.maxY > -1 && y == currentRow.maxY+1 {
+					// fmt.Println("x: ", x)
+					// fmt.Println("next row's minx, maxx: ", rows[y].minX, rows[y].maxX)
+					if y > len(rows)-1 {
+						y = len(rows) - 1
+					}
+					if x <= rows[y].maxX && x >= rows[y].minX {
+						// do nothing
+						// fmt.Println("let it increase")
+						if y < 0 {
+							y = 0
+						}
+					} else {
+						y = currentRow.minY
+						if y < 0 {
+							y = 0
+						}
+					}
 				}
 				// fmt.Printf("final move to x: %d; y: %d\n", x, y)
+				if y < 0 {
+					y = 0
+				}
+				if y > len(rows)-1 {
+					y = len(rows) - 1
+				}
 				if rows[y].items[x] == "#" {
-					fmt.Println("hit wall")
+					// fmt.Println("hit wall")
 					break
 				}
 				s.position.x = x
@@ -223,7 +272,8 @@ func main() {
 	// fmt.Printf("rows: %+v", rows)
 	// fmt.Println("path: ", path)
 	display(rows)
-	fmt.Printf("row: %d; column: %d; facing: %d \n", s.position.y+1, s.position.x+1, s.direction)
+	sum := (1000 * (s.position.y + 1)) + (4 * (s.position.x + 1)) + s.direction
+	fmt.Printf("row: %d; column: %d; facing: %d; password: %d\n", s.position.y+1, s.position.x+1, s.direction, sum)
 
 }
 
