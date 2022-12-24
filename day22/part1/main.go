@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strconv"
 	"strings"
+	"unicode"
 )
 
 type santa struct {
@@ -40,18 +42,18 @@ func main() {
 
 	file := os.Args[1]
 	path := os.Args[2]
-	fmt.Println("going to walk: ", path)
+	// fmt.Println("going to walk: ", path)
 	content, _ := os.ReadFile(file)
 	split := strings.Split(string(content), "\n")
 
 	grid := make([][]*point, 0)
 
-	var (
-		maxX int
-		minX = math.MaxInt
-	)
 	// go through first row by row and set maxX and minX then go through column by column and set minY and maxY.
 	for y, line := range split {
+		var (
+			maxX int
+			minX = math.MaxInt
+		)
 
 		// In this row, this is the maxX and minX.
 		row := make([]*point, 0)
@@ -111,7 +113,7 @@ func main() {
 				}
 				col += grid[y][x].char
 			}
-			fmt.Println("constructed: ", col)
+
 			if v := strings.LastIndex(col, "#"); v > -1 {
 				if v > maxY {
 					maxY = v
@@ -149,19 +151,152 @@ func main() {
 		direction: 0,
 	}
 
+	number := ""
+	for i, c := range path {
+		if unicode.IsDigit(c) && i < len(path)-1 {
+			number += string(c)
+		} else if unicode.IsLetter(c) {
+			// move
+			n, _ := strconv.Atoi(number)
+			for m := 0; m < n; m++ {
+				// display(grid)
+				// fmt.Printf("walking %d into direction: %d\n", n, s.direction)
+				// update coordinate
+				x := s.position.x + directions[s.direction].x
+				// if we are above or below, check for the min or the max.
+				// a mod doesn't work nicely.
+				// fmt.Println("x: ", x)
+				if x < 0 {
+					x = 0
+				}
+				if x > len(grid[s.position.y])-1 {
+					x = len(grid[s.position.y]) - 1
+				}
+				if x > grid[s.position.y][x].maxX {
+					x = grid[s.position.y][x].minX
+				}
+				if x < grid[s.position.y][x].minX {
+					x = grid[s.position.y][x].maxX
+				}
+
+				y := s.position.y + directions[s.direction].y
+				if y < 0 {
+					y = 0
+				}
+				// fmt.Println("min Y: ", grid[y][s.position.x].minY)
+				// fmt.Println("max Y: ", grid[y][s.position.x].maxY)
+				// fmt.Println("y: ", y)
+				// fmt.Println("x: ", x)
+				if y >= grid[y][s.position.x].maxY {
+					y = grid[y][s.position.x].minY
+				}
+				if y < grid[y][s.position.x].minY {
+					y = grid[y][s.position.x].maxY
+				}
+
+				if grid[y][x].char == "#" {
+					break
+				}
+
+				// if all goes good, update santa's position:
+				s.position.x = x
+				s.position.y = y
+				// fmt.Println("position: ", s)
+				switch s.direction {
+				case 0:
+					grid[s.position.y][s.position.x].char = ">"
+				case 1:
+					grid[s.position.y][s.position.x].char = "v"
+				case 2:
+					grid[s.position.y][s.position.x].char = "<"
+				case 3:
+					grid[s.position.y][s.position.x].char = "^"
+				}
+			}
+			// rotate
+			if c == 'L' {
+				// fmt.Println("rotating left from: ", s.direction)
+				s.direction = mod(s.direction-1, len(directions))
+				// fmt.Println("rotating left to: ", s.direction)
+			} else if c == 'R' {
+				// fmt.Println("rotating right from: ", s.direction)
+				s.direction = mod(s.direction+1, len(directions))
+				// fmt.Println("rotating right to: ", s.direction)
+			}
+			number = ""
+		} else {
+			// final move
+			number += string(c)
+			n, _ := strconv.Atoi(number)
+			// move
+			for m := 0; m < n; m++ {
+				// update coordinate
+				x := s.position.x + directions[s.direction].x
+				// if we are above or below, check for the min or the max.
+				// a mod doesn't work nicely.
+				if x < 0 {
+					x = 0
+				}
+				if x > grid[s.position.y][x-1].maxX {
+					x = grid[s.position.y][x-1].minX
+				}
+				if x < grid[s.position.y][x].minX {
+					x = grid[s.position.y][x].maxX
+				}
+
+				y := s.position.y + directions[s.direction].y
+				if y < 0 {
+					y = 0
+				}
+				if y >= grid[y][s.position.x].maxY {
+					y = grid[y][s.position.x].minY
+				}
+				if y < grid[y][s.position.x].minY {
+					y = grid[y][s.position.x].maxY
+				}
+
+				if grid[y][x].char == "#" {
+					break
+				}
+
+				// if all goes good, update santa's position:
+				s.position.x = x
+				s.position.y = y
+				// fmt.Println("position: ", s)
+				switch s.direction {
+				case 0:
+					grid[s.position.y][s.position.x].char = ">"
+				case 1:
+					grid[s.position.y][s.position.x].char = "v"
+				case 2:
+					grid[s.position.y][s.position.x].char = "<"
+				case 3:
+					grid[s.position.y][s.position.x].char = "^"
+				}
+			}
+
+		}
+	}
+
 	// If we move into a wall we `break` as we can't go forward any longer.
 	fmt.Println("starting position: ", s)
 	// fmt.Printf("rows: %+v", rows)
 	display(grid)
-	// sum := (1000 * (s.position.y + 1)) + (4 * (s.position.x + 1)) + s.direction
-	// fmt.Printf("row: %d; column: %d; facing: %d; password: %d\n", s.position.y+1, s.position.x+1, s.direction, sum)
+	sum := (1000 * (s.position.y + 1)) + (4 * (s.position.x + 1)) + s.direction
+	fmt.Printf("row: %d; column: %d; facing: %d; password: %d\n", s.position.y+1, s.position.x+1, s.direction, sum)
 
 }
 
 func display(grid [][]*point) {
+	// for y := 0; y < len(grid); y++ {
+	// 	for x := 0; x < len(grid[y]); x++ {
+	// 		fmt.Printf("%d:%d ", grid[y][x].minY, grid[y][x].maxY)
+	// 	}
+	// 	fmt.Println()
+	// }
 	for y := 0; y < len(grid); y++ {
 		for x := 0; x < len(grid[y]); x++ {
-			fmt.Printf("%d:%d ", grid[y][x].minY, grid[y][x].maxY)
+			fmt.Printf(grid[y][x].char)
 		}
 		fmt.Println()
 	}
