@@ -130,7 +130,7 @@ func main() {
 			for _, d := range directions {
 				next := point{x: p.x + d.x, y: p.y + d.y}
 				// Out of bounds
-				if next.x < 0 || next.y < 0 || next.x >= len(grid[next.y]) || next.y >= len(grid[next.y]) {
+				if next.x <= 0 || next.y <= 0 || next.x >= len(grid[next.y]) || next.y >= len(grid[next.y]) {
 					continue
 				}
 				// But we also need to check for the end coordinate which is in the border.
