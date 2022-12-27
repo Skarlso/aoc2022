@@ -10,8 +10,6 @@ type point struct {
 	x, y int
 }
 
-// directions are: We start of facing right.
-// We will -1 current position or +1 current position based on L, R.
 var directions = map[string]point{
 	"N": {x: 0, y: -1}, // N
 	"E": {x: 1, y: 0},  // E
@@ -30,9 +28,8 @@ var directions = map[string]point{
 type blizzard struct {
 	location  point
 	direction point
-	// mod defines the value at which this blizzard will wrap around.
-	// take head of the borders.
-	mod int
+	// the point to wrap too
+	wrappingPoint point
 	// Purely for display purposes.
 	char string
 }
@@ -51,7 +48,7 @@ func main() {
 		start point
 		end   point
 	)
-	blizzards := make(map[point][]blizzard)
+	var blizzards []*blizzard
 	grid := make([][]string, 0)
 	for y, line := range split {
 		if y == 0 {
@@ -73,57 +70,61 @@ func main() {
 			case "^":
 				// -1 on the mod because of the borders.
 				b := blizzard{
-					location:  point{x: x, y: y},
-					direction: point{x: 0, y: -1}, // N
-					mod:       len(split) - 1,
-					char:      "^",
+					location:      point{x: x, y: y},
+					direction:     point{x: 0, y: -1}, // N
+					wrappingPoint: point{x: x, y: len(split) - 2},
+					char:          "^",
 				}
-				blizzards[b.location] = append(blizzards[b.location], b)
+				blizzards = append(blizzards, &b)
 				insert = "."
 			case ">":
 				b := blizzard{
-					location:  point{x: x, y: y},
-					direction: point{x: 1, y: 0}, // E
-					mod:       len(line) - 1,
-					char:      ">",
+					location:      point{x: x, y: y},
+					direction:     point{x: 1, y: 0}, // E
+					wrappingPoint: point{x: 1, y: y},
+					char:          ">",
 				}
-				blizzards[b.location] = append(blizzards[b.location], b)
+				blizzards = append(blizzards, &b)
 				insert = "."
 			case "v":
 				b := blizzard{
-					location:  point{x: x, y: y},
-					direction: point{x: 0, y: 1}, // S
-					mod:       len(split) - 1,
-					char:      "v",
+					location:      point{x: x, y: y},
+					direction:     point{x: 0, y: 1}, // S
+					wrappingPoint: point{x: x, y: 1},
+					char:          "v",
 				}
-				blizzards[b.location] = append(blizzards[b.location], b)
+				blizzards = append(blizzards, &b)
 				insert = "."
 			case "<":
 				b := blizzard{
-					location:  point{x: x, y: y},
-					direction: point{x: -1, y: 0}, // W
-					mod:       len(line) - 1,
-					char:      "<",
+					location:      point{x: x, y: y},
+					direction:     point{x: -1, y: 0}, // W
+					wrappingPoint: point{x: len(line) - 2, y: y},
+					char:          "<",
 				}
-				blizzards[b.location] = append(blizzards[b.location], b)
+				blizzards = append(blizzards, &b)
 				insert = "."
 			}
 			row = append(row, insert)
 		}
 		grid = append(grid, row)
 	}
-	display(grid, blizzards)
 	fmt.Printf("start: %+v, end: %+v\n", start, end)
-
+	bm := make(map[point]blizzard)
+	for _, b := range blizzards {
+		bm[b.location] = *b
+	}
+	// fmt.Println("initial state: ")
+	// display(grid, bm)
 	currentStep := map[point]bool{start: true}
 	steps := 0
 	for !currentStep[end] {
 		// Before Santa moves, move the blizzards.
-		blizzards = moveBlizzards(blizzards)
-
+		blizzardMap := moveBlizzards(grid, blizzards)
+		// display(grid, blizzardMap)
 		newStep := make(map[point]bool)
 		for p := range currentStep {
-			if _, ok := blizzards[p]; !ok {
+			if _, ok := blizzardMap[p]; !ok {
 				newStep[p] = true
 			}
 
@@ -139,103 +140,41 @@ func main() {
 				}
 
 				// there is a blizzard there
-				if _, ok := blizzards[next]; ok {
+				if _, ok := blizzardMap[next]; ok {
 					continue
 				}
-
 				newStep[next] = true
 			}
 		}
 		currentStep = newStep
 		steps++
-		// display(grid, blizzards)
-		// If queue is empty, we have no more moves left, we'll consider the current point a valid move.
-		// This is simulating waiting.
-		// var temp point
-		// queue := []point{current}
-		// seen := map[point]bool{current: true}
-		// for
-
-		// if len(queue) == 0 {
-		// 	queue = append(queue, current)
-		// }
-		// current, queue = queue[0], queue[1:]
-		// grid[current.y][current.x] = "S"
-
-		// if current == end {
-		// 	fmt.Println("we reached the end in steps: ", steps)
-		// 	os.Exit(0)
-		// }
-
-		// // I bet that this is an endless loop.
-		// queue = append(queue, neighbour(current, grid, blizzards)...)
-
-		// steps++
 	}
 
 	fmt.Println("steps it took: ", steps)
 }
 
-// Bug: it loops over the newly created items as well. I need to create a NEW list.
-// We create a new list for ever move to update the keys and make sure
-// all blizzards are at the right location and they don't move twice.
-func moveBlizzards(blizzards map[point][]blizzard) map[point][]blizzard {
-	result := make(map[point][]blizzard)
-	for k := range blizzards {
-		blizzard := blizzards[k]
-		for _, b := range blizzard {
-			// they only move into a single direction, so it's safe to increase both one of them
-			// won't change.
-			b.location.x = (b.location.x + b.direction.x) % b.mod
-			b.location.y = (b.location.y + b.direction.y) % b.mod
-			// take care of the border
-			if b.location.x == 0 {
-				b.location.x = 1
-			}
-			if b.location.y == 0 {
-				b.location.y = 1
-			}
-			// fmt.Println("location after: ", b.location)
-			result[b.location] = append(result[b.location], b)
+func moveBlizzards(grid [][]string, blizzards []*blizzard) map[point]blizzard {
+	result := make(map[point]blizzard)
+	for b := 0; b < len(blizzards); b++ {
+		// they only move into a single direction, so it's safe to increase both one of them
+		// won't change.
+		blizzards[b].location.x = blizzards[b].location.x + blizzards[b].direction.x
+		blizzards[b].location.y = blizzards[b].location.y + blizzards[b].direction.y
+
+		if grid[blizzards[b].location.y][blizzards[b].location.x] == "#" {
+			blizzards[b].location = blizzards[b].wrappingPoint
 		}
+
+		result[blizzards[b].location] = *blizzards[b]
 	}
 	return result
 }
 
-func neighbour(current point, grid [][]string, blizzards map[point][]blizzard) []point {
-	var result []point
-	// consult the blizzard map and our current location in the grid
-	for _, d := range directions {
-		next := point{x: current.x + d.x, y: current.y + d.y}
-		// Out of bounds
-		if next.x < 0 || next.y < 0 || next.x >= len(grid[next.y]) || next.y >= len(grid[next.y]) {
-			continue
-		}
-		// But we also need to check for the end coordinate which is in the border.
-		if grid[next.y][next.x] == "#" {
-			continue
-		}
-
-		// there is a blizzard there
-		if _, ok := blizzards[next]; ok {
-			continue
-		}
-
-		result = append(result, next)
-	}
-
-	return result
-}
-
-func display(grid [][]string, blizzards map[point][]blizzard) {
+func display(grid [][]string, blizzards map[point]blizzard) {
 	for y := 0; y < len(grid); y++ {
 		for x := 0; x < len(grid[y]); x++ {
 			if v, ok := blizzards[point{x: x, y: y}]; ok {
-				if len(v) > 1 {
-					fmt.Print(len(v))
-				} else if len(v) == 1 {
-					fmt.Print(v[0].char)
-				}
+				fmt.Print(v.char)
 			} else {
 				fmt.Print(grid[y][x])
 			}
