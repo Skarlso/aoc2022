@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"strings"
 )
@@ -11,44 +10,6 @@ type point struct {
 	x, y int
 }
 
-// type elf struct {
-// 	id             int
-// 	location       point
-// 	proposingOrder []check
-// }
-
-// point would probably be enough instead of elf.
-type check struct {
-	name string
-	f    func(elf point, grid map[point]bool) (point, bool)
-}
-
-// type check func(elf point, grid map[point]bool) (point, bool)
-
-var (
-	// Adding name so I can verify that it's shuffling them properly.
-	checkNorthCheck = check{
-		f:    checkNorth,
-		name: "north",
-	}
-	checkSouthCheck = check{
-		f:    checkSouth,
-		name: "south",
-	}
-	checkWestCheck = check{
-		f:    checkWest,
-		name: "west",
-	}
-	checkEastCheck = check{
-		f:    checkEast,
-		name: "east",
-	}
-)
-
-var propositionOrder = []check{checkNorthCheck, checkSouthCheck, checkWestCheck, checkEastCheck}
-
-// directions are: We start of facing right.
-// We will -1 current position or +1 current position based on L, R.
 var directions = map[string]point{
 	"N": {x: 0, y: -1}, // N
 	"E": {x: 1, y: 0},  // E
@@ -56,11 +17,21 @@ var directions = map[string]point{
 	"W": {x: -1, y: 0}, // W
 
 	// cross
-	"NE": {x: 1, y: -1},  // NE
-	"NW": {x: -1, y: -1}, // NW
-	"SW": {x: -1, y: 1},  // SW
-	"SE": {x: 1, y: 1},   // SE
+	// "NE": {x: 1, y: -1},  // NE
+	// "NW": {x: -1, y: -1}, // NW
+	// "SW": {x: -1, y: 1},  // SW
+	// "SE": {x: 1, y: 1},   // SE
 
+}
+
+// blizzard defines a blizzard with current location and direction.
+type blizzard struct {
+	location  point
+	direction point
+	// the point to wrap too
+	wrappingPoint point
+	// Purely for display purposes.
+	char string
 }
 
 func main() {
@@ -73,190 +44,141 @@ func main() {
 	content, _ := os.ReadFile(file)
 	split := strings.Split(string(content), "\n")
 
-	grid := make(map[point]bool)
-
-	// go through first row by row and set maxX and minX then go through column by column and set minY and maxY.
-	// elfid := 0
-	// elfs := make([]*elf, 0)
-	// elfs := 0
+	var (
+		start point
+		end   point
+	)
+	var blizzards []*blizzard
+	grid := make([][]string, 0)
 	for y, line := range split {
-		for x, c := range line {
-			if c == '#' {
-				// e := elf{
-				// 	id:             elfid,
-				// 	location:       point{x: x, y: y},
-				// 	proposingOrder: []check{checkNorth, checkSouth, checkWest, checkEast},
-				// }
-				grid[point{x: x, y: y}] = true
-				// elfs++
-				// elfs = append(elfs, &e)
+		if y == 0 {
+			n := strings.Index(line, ".")
+			if n > -1 {
+				start = point{x: n, y: y}
 			}
 		}
+		if y == len(split)-1 {
+			n := strings.Index(line, ".")
+			if n > -1 {
+				end = point{x: n, y: y}
+			}
+		}
+		row := make([]string, 0)
+		for x, c := range strings.Split(line, "") {
+			insert := c
+			switch c {
+			case "^":
+				// -1 on the mod because of the borders.
+				b := blizzard{
+					location:      point{x: x, y: y},
+					direction:     point{x: 0, y: -1}, // N
+					wrappingPoint: point{x: x, y: len(split) - 2},
+					char:          "^",
+				}
+				blizzards = append(blizzards, &b)
+				insert = "."
+			case ">":
+				b := blizzard{
+					location:      point{x: x, y: y},
+					direction:     point{x: 1, y: 0}, // E
+					wrappingPoint: point{x: 1, y: y},
+					char:          ">",
+				}
+				blizzards = append(blizzards, &b)
+				insert = "."
+			case "v":
+				b := blizzard{
+					location:      point{x: x, y: y},
+					direction:     point{x: 0, y: 1}, // S
+					wrappingPoint: point{x: x, y: 1},
+					char:          "v",
+				}
+				blizzards = append(blizzards, &b)
+				insert = "."
+			case "<":
+				b := blizzard{
+					location:      point{x: x, y: y},
+					direction:     point{x: -1, y: 0}, // W
+					wrappingPoint: point{x: len(line) - 2, y: y},
+					char:          "<",
+				}
+				blizzards = append(blizzards, &b)
+				insert = "."
+			}
+			row = append(row, insert)
+		}
+		grid = append(grid, row)
 	}
-	// fmt.Println("number of elfs: ", elfs)
-	round := 0
-	// limit := 10
-	for {
-		atRest := true
-		suggestions := make(map[point][]point)
-		for elf := range grid {
-			// fmt.Println("elf: ", elf)
+	fmt.Printf("start: %+v, end: %+v\n", start, end)
+	bm := make(map[point]blizzard)
+	for _, b := range blizzards {
+		bm[b.location] = *b
+	}
+	// fmt.Println("initial state: ")
+	// display(grid, bm)
+	steps := dodgeBlizzards(start, end, grid, blizzards)
+	fmt.Println("done to end")
+	steps += dodgeBlizzards(end, start, grid, blizzards)
+	fmt.Println("done to start")
+	steps += dodgeBlizzards(start, end, grid, blizzards)
+	fmt.Println("done to back to end")
+	fmt.Println("steps it took: ", steps)
+}
 
-			if needsToMove(elf, grid) {
-				for _, p := range propositionOrder {
-					// If any of them is false, THEN we need to add the first one that is true.
-					if v, ok := p.f(elf, grid); ok {
-						// fmt.Printf("elf '%+v' is proposing to move to: %+v\n", elf, v)
-						suggestions[v] = append(suggestions[v], elf)
-						atRest = false
-						// if proposition is accepted, stop
-						break
-					}
+func dodgeBlizzards(start, end point, grid [][]string, blizzards []*blizzard) int {
+	currentStep := map[point]bool{start: true}
+	steps := 0
+	for !currentStep[end] {
+		// Before Santa moves, move the blizzards.
+		blizzardMap := moveBlizzards(grid, blizzards)
+		// display(grid, blizzardMap)
+		newStep := make(map[point]bool)
+		for p := range currentStep {
+			if _, ok := blizzardMap[p]; !ok {
+				newStep[p] = true
+			}
+
+			for _, d := range directions {
+				next := point{x: p.x + d.x, y: p.y + d.y}
+				_, ok := blizzardMap[next]
+				if next.x >= 0 && next.y >= 0 && next.y < len(grid) && next.x < len(grid[next.y]) && grid[next.y][next.x] != "#" && !ok {
+					newStep[next] = true
 				}
 			}
 		}
-		// fmt.Println("suggestions: ", suggestions)
-		for k, v := range suggestions {
-			if len(v) == 1 {
-				elf := v[0]
-				// fmt.Printf("elf: %+v is moving to point: %+v\n", elf, k)
-				// update these fuckers.
-				// fmt.Println("deleting elf: ", elf)
-				// fmt.Println("before delete: ", grid)
-				delete(grid, elf)
-				// fmt.Println("after delete: ", grid)
-				// fmt.Println("adding new elf: ", k)
-				grid[k] = true
-				// fmt.Println("after adding: ", grid)
-			}
-		}
-		round++
-		propositionOrder = append(propositionOrder[1:], propositionOrder[0])
-
-		// fmt.Println("round: ", round)
-		// fmt.Println("grid:", grid)
-		// display(grid)
-		if atRest {
-			fmt.Println("no-one moved. Elf are all set.")
-			break
-		}
+		currentStep = newStep
+		steps++
 	}
 
-	// fmt.Println("number of elfs: ", elfid)
-	fmt.Println("number of rounds: ", round)
+	return steps
 }
 
-func needsToMove(elf point, grid map[point]bool) bool {
-	for _, d := range directions {
-		if grid[point{x: elf.x + d.x, y: elf.y + d.y}] {
-			return true
-		}
-	}
+func moveBlizzards(grid [][]string, blizzards []*blizzard) map[point]blizzard {
+	result := make(map[point]blizzard)
+	for b := 0; b < len(blizzards); b++ {
+		// they only move into a single direction, so it's safe to increase both one of them
+		// won't change.
+		blizzards[b].location.x = blizzards[b].location.x + blizzards[b].direction.x
+		blizzards[b].location.y = blizzards[b].location.y + blizzards[b].direction.y
 
-	return false
+		if grid[blizzards[b].location.y][blizzards[b].location.x] == "#" {
+			blizzards[b].location = blizzards[b].wrappingPoint
+		}
+
+		result[blizzards[b].location] = *blizzards[b]
+	}
+	return result
 }
 
-func countEmpty(grid map[point]bool) int {
-	var (
-		minx, miny        = math.MaxInt, math.MaxInt
-		maxx, maxy, count int
-	)
-	for p := range grid {
-		if p.x > maxx {
-			maxx = p.x
-		}
-		if p.x < minx {
-			minx = p.x
-		}
-		if p.y > maxy {
-			maxy = p.y
-		}
-		if p.y < miny {
-			miny = p.y
-		}
-
-	}
-	for y := miny; y <= maxy; y++ {
-		for x := minx; x <= maxx; x++ {
-			if !grid[point{x: x, y: y}] {
-				count++
-			}
-		}
-	}
-
-	return count
-}
-
-func display(grid map[point]bool) {
-	var (
-		minx, miny = math.MaxInt, math.MaxInt
-		maxx, maxy int
-	)
-	for p := range grid {
-		if p.x > maxx {
-			maxx = p.x
-		}
-		if p.x < minx {
-			minx = p.x
-		}
-		if p.y > maxy {
-			maxy = p.y
-		}
-		if p.y < miny {
-			miny = p.y
-		}
-
-	}
-	// fmt.Printf("minx: %d, maxx: %d, miny: %d, maxy: %d\n", minx, maxx, miny, maxy)
-	for y := miny; y <= maxy; y++ {
-		for x := minx; x <= maxx; x++ {
-			if grid[point{x: x, y: y}] {
-				fmt.Print("#")
+func display(grid [][]string, blizzards map[point]blizzard) {
+	for y := 0; y < len(grid); y++ {
+		for x := 0; x < len(grid[y]); x++ {
+			if v, ok := blizzards[point{x: x, y: y}]; ok {
+				fmt.Print(v.char)
 			} else {
-				fmt.Print(".")
+				fmt.Print(grid[y][x])
 			}
 		}
 		fmt.Println()
 	}
-}
-
-// There is some overlap and duplicating here.
-func checkNorth(elf point, grid map[point]bool) (point, bool) {
-	for _, p := range []point{directions["N"], directions["NE"], directions["NW"]} {
-		if _, ok := grid[point{x: elf.x + p.x, y: elf.y + p.y}]; ok {
-			return point{}, false
-		}
-	}
-
-	return point{x: elf.x, y: elf.y - 1}, true
-}
-
-func checkSouth(elf point, grid map[point]bool) (point, bool) {
-	for _, p := range []point{directions["S"], directions["SE"], directions["SW"]} {
-		if _, ok := grid[point{x: elf.x + p.x, y: elf.y + p.y}]; ok {
-			return point{}, false
-		}
-	}
-
-	return point{x: elf.x, y: elf.y + 1}, true
-}
-
-func checkWest(elf point, grid map[point]bool) (point, bool) {
-	for _, p := range []point{directions["W"], directions["NW"], directions["SW"]} {
-		if _, ok := grid[point{x: elf.x + p.x, y: elf.y + p.y}]; ok {
-			return point{}, false
-		}
-	}
-
-	return point{x: elf.x - 1, y: elf.y}, true
-}
-
-func checkEast(elf point, grid map[point]bool) (point, bool) {
-	for _, p := range []point{directions["E"], directions["NE"], directions["SE"]} {
-		if _, ok := grid[point{x: elf.x + p.x, y: elf.y + p.y}]; ok {
-			return point{}, false
-		}
-	}
-
-	return point{x: elf.x + 1, y: elf.y}, true
 }
