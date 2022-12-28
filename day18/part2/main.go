@@ -43,9 +43,8 @@ func main() {
 	content, _ := os.ReadFile(file)
 	split := strings.Split(string(content), "\n")
 
-	globalSides := make(map[point]int)
+	globalSides := make(map[point]bool)
 
-	listOfPoints := make([]point, 0)
 	for _, line := range split {
 		if line == "" {
 			continue
@@ -55,17 +54,69 @@ func main() {
 		)
 		fmt.Sscanf(line, "%d,%d,%d", &x, &y, &z)
 		p := point{x: x, y: y, z: z}
-		listOfPoints = append(listOfPoints, p)
-		for _, s := range sides {
-			globalSides[point{x: p.x + s.x, y: p.y + s.y, z: p.z + s.z}]++
+		globalSides[p] = true
+	}
+
+	var (
+		maxx, maxy, maxz int
+	)
+	for k := range globalSides {
+		if k.x > maxx {
+			maxx = k.x
+		}
+		if k.y > maxy {
+			maxy = k.y
+		}
+		if k.z > maxz {
+			maxz = k.z
 		}
 	}
 
-	totalLoneSides := 0
-	for _, v := range globalSides {
-		if v == 1 {
-			totalLoneSides++
+	totalEdgeFacingSides := 0
+	for p := range globalSides {
+		for _, s := range sides {
+			next := point{
+				x: p.x + s.x,
+				y: p.y + s.y,
+				z: p.z + s.z,
+			}
+
+			if reachesEdge(next, globalSides, maxx, maxy, maxz) {
+				totalEdgeFacingSides++
+			}
 		}
 	}
-	fmt.Println("lone sides: ", totalLoneSides)
+
+	fmt.Println("total edge facing sides: ", totalEdgeFacingSides)
+}
+
+func reachesEdge(p point, totalSides map[point]bool, maxx, maxy, maxz int) bool {
+	queue := []point{p}
+	seen := map[point]bool{}
+	var current point
+	for len(queue) > 0 {
+		current, queue = queue[0], queue[1:]
+
+		if seen[current] || totalSides[current] {
+			continue
+		}
+		seen[current] = true
+
+		// edge reached
+		if current.x <= 0 || current.x >= maxx ||
+			current.y <= 0 || current.y >= maxy ||
+			current.z <= 0 || current.z >= maxz {
+			return true
+		}
+
+		for _, s := range sides {
+			next := point{
+				x: current.x + s.x,
+				y: current.y + s.y,
+				z: current.z + s.z,
+			}
+			queue = append(queue, next)
+		}
+	}
+	return false
 }

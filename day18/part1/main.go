@@ -45,7 +45,6 @@ func main() {
 
 	globalSides := make(map[point]int)
 
-	listOfPoints := make([]point, 0)
 	for _, line := range split {
 		if line == "" {
 			continue
@@ -55,7 +54,6 @@ func main() {
 		)
 		fmt.Sscanf(line, "%d,%d,%d", &x, &y, &z)
 		p := point{x: x, y: y, z: z}
-		listOfPoints = append(listOfPoints, p)
 		for _, s := range sides {
 			globalSides[point{x: p.x + s.x, y: p.y + s.y, z: p.z + s.z}]++
 		}
