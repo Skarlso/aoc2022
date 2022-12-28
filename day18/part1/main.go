@@ -43,7 +43,7 @@ func main() {
 	content, _ := os.ReadFile(file)
 	split := strings.Split(string(content), "\n")
 
-	globalSides := make(map[point]bool)
+	globalSides := make(map[point]int)
 
 	listOfPoints := make([]point, 0)
 	for _, line := range split {
@@ -56,18 +56,16 @@ func main() {
 		fmt.Sscanf(line, "%d,%d,%d", &x, &y, &z)
 		p := point{x: x, y: y, z: z}
 		listOfPoints = append(listOfPoints, p)
-		globalSides[p] = true
+		for _, s := range sides {
+			globalSides[point{x: p.x + s.x, y: p.y + s.y, z: p.z + s.z}]++
+		}
 	}
 
 	totalLoneSides := 0
-	for _, p := range listOfPoints {
-		loneSides := 6
-		for _, s := range sides {
-			if globalSides[point{x: p.x + s.x, y: p.y + s.y, z: p.z + s.z}] {
-				loneSides--
-			}
+	for _, v := range globalSides {
+		if v == 1 {
+			totalLoneSides++
 		}
-		totalLoneSides += loneSides
 	}
 	fmt.Println("lone sides: ", totalLoneSides)
 }
