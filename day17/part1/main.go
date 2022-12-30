@@ -9,8 +9,9 @@ import (
 // We will be counting upwards as `+y` instead of a grid. We will handle the grid as a Cartesian coordinate system.
 var (
 	l = shape{
-		height: 3,
-		top:    point{x: 2, y: 2},
+		height:   3,
+		top:      point{x: 2, y: 2},
+		mostLeft: point{x: 0, y: 0},
 		leftSide: []point{
 			{x: 0, y: 0},
 			{x: 1, y: 0},
@@ -45,6 +46,7 @@ var (
 		top:       point{x: 0, y: 0},
 		mostRight: point{x: 3, y: 0},
 		bottom:    point{x: 0, y: 0},
+		mostLeft:  point{x: 0, y: 0},
 		leftSide: []point{
 			{x: 0, y: 0},
 		},
@@ -70,6 +72,7 @@ var (
 		top:       point{x: 0, y: 1},
 		mostRight: point{x: 1, y: 0},
 		bottom:    point{x: 0, y: 0},
+		mostLeft:  point{x: 0, y: 0},
 		leftSide: []point{
 			{x: 0, y: 0},
 			{x: 0, y: 1},
@@ -92,30 +95,31 @@ var (
 	plus = shape{
 		height:    3,
 		name:      "+",
-		top:       point{x: 1, y: 1},
-		mostRight: point{x: 2, y: 0},
-		bottom:    point{x: 1, y: -1},
+		top:       point{x: 0, y: 2},
+		mostRight: point{x: 1, y: 1},
+		mostLeft:  point{x: -1, y: 0},
+		bottom:    point{x: 0, y: 0},
 		leftSide: []point{
 			{x: 0, y: 0},
-			{x: 1, y: 1},
-			{x: 1, y: -1},
+			{x: -1, y: 1},
+			{x: 0, y: 2},
 		},
 		rightSide: []point{
+			{x: 0, y: 0},
 			{x: 1, y: 1},
-			{x: 1, y: -1},
-			{x: 2, y: 0},
+			{x: 0, y: 2},
 		},
 		bottomSide: []point{
 			{x: 0, y: 0},
-			{x: 1, y: -1},
-			{x: 2, y: 0},
+			{x: -1, y: 1},
+			{x: 1, y: 1},
 		},
 		all: []point{
 			{x: 0, y: 0},
-			{x: 1, y: 0},
-			{x: 1, y: -1},
+			{x: -1, y: 1},
+			{x: 0, y: 2},
 			{x: 1, y: 1},
-			{x: 2, y: 0},
+			{x: 0, y: 1},
 		},
 	}
 	linePiece = shape{
@@ -124,6 +128,7 @@ var (
 		top:       point{x: 0, y: 3},
 		mostRight: point{x: 0, y: 0},
 		bottom:    point{x: 0, y: 0},
+		mostLeft:  point{x: 0, y: 0},
 		leftSide: []point{
 			{x: 0, y: 0},
 			{x: 0, y: 1},
@@ -175,6 +180,7 @@ type shape struct {
 	rightSide  []point
 	top        point
 	mostRight  point
+	mostLeft   point
 	bottom     point
 	bottomSide []point
 	all        []point
@@ -207,7 +213,7 @@ func main() {
 	fmt.Println("jet pattern: ", jetPattern)
 
 	y := 0
-	rocks := 3
+	rocks := 2022
 	fallen := 0
 	playground := make(map[point]bool)
 	leftSide := 0
@@ -222,7 +228,7 @@ func main() {
 		// make sure we are 3 above the last fallen rock's last y coordinate considering our current falling rock's
 		// lowest point.
 		// y += currentRock.bottom.y
-		current := point{x: 2, y: startingY} // This is the location of the designated zeroth coordinate of the shape.
+		current := point{x: 2 - currentRock.mostLeft.x, y: startingY} // This is the location of the designated zeroth coordinate of the shape.
 
 		// fmt.Println("starting point: ", current)
 		// fmt.Println("current rock: ", currentRock.name)
@@ -232,14 +238,14 @@ func main() {
 		canMove := true
 		for canMove {
 			canMove = false
-			display(playground, y, current, currentRock)
+			// display(playground, y, current, currentRock)
 
 			currentJet := jetPattern[jetPush%len(jetPattern)]
 			// fmt.Println("jet: ", currentJet)
 			if currentJet == "<" {
 				// The x is at the left side, so this is okay.
 				// But I must also consider all points because it could blow the rock into a crevasse.
-				if current.x-1 >= leftSide && !isSomethingToTheLeft(current, currentRock, playground) {
+				if current.x-1+currentRock.mostLeft.x >= leftSide && !isSomethingToTheLeft(current, currentRock, playground) {
 					current.x--
 				}
 			} else if currentJet == ">" {
@@ -292,21 +298,21 @@ func main() {
 			// 	canMove = true
 			// 	// current.y--
 			// }
-			display(playground, y, current, currentRock)
+			// display(playground, y, current, currentRock)
 		}
 
-		fmt.Println("current: ", current.y)
+		// fmt.Println("current: ", current.y)
 		// Once the rock stopped moving we add each point of it to the playground.
 		for _, p := range allPoints(current, currentRock) {
 			// fmt.Println("This is never getting called?")
 			playground[p] = true
 		}
-		display(playground, y, current, currentRock)
+		// display(playground, y, current, currentRock)
 
 		// The highest point is the current y + height.
 		// Y should be the PREVIOUS y...
-		fmt.Println("current.y+currentRock.top.y: ", current.y+currentRock.height)
-		fmt.Println("(current.y+currentRock.bottom.y)+(current.y+currentRock.top.y): ", (current.y+currentRock.bottom.y)+(current.y+currentRock.top.y))
+		// fmt.Println("current.y+currentRock.top.y: ", current.y+currentRock.height)
+		// fmt.Println("(current.y+currentRock.bottom.y)+(current.y+currentRock.top.y): ", (current.y+currentRock.bottom.y)+(current.y+currentRock.top.y))
 		// if current.y+currentRock.height > y {
 		// 	y = current.y + currentRock.height
 		// 	// I have to re-think this one.
@@ -317,7 +323,7 @@ func main() {
 			y = current.y + currentRock.height
 		}
 
-		fmt.Println("highest y is now: ", y)
+		// fmt.Println("highest y is now: ", y)
 		fallen++
 	}
 
@@ -381,7 +387,7 @@ func isSomethingToTheRight(current point, currentRock shape, playground map[poin
 // include the bottom line which is y == 0.
 func isSomethingDownwards(current point, currentRock shape, playground map[point]bool) bool {
 	// -1 because we are checking the neighbour
-	for _, p := range currentRock.rightSide {
+	for _, p := range currentRock.bottomSide {
 		if playground[point{x: p.x + current.x, y: current.y + p.y - 1}] {
 			return true
 		}
