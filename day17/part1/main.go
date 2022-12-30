@@ -29,7 +29,7 @@ var (
 			{x: 1, y: 0},
 			{x: 2, y: 0},
 		},
-		mostRight: point{x: 1, y: 0},
+		mostRight: point{x: 2, y: 0},
 		bottom:    point{x: 0, y: 0},
 		all: []point{
 			{x: 0, y: 0},
@@ -97,11 +97,11 @@ var (
 		name:      "+",
 		top:       point{x: 0, y: 2},
 		mostRight: point{x: 1, y: 1},
-		mostLeft:  point{x: -1, y: 0},
+		mostLeft:  point{x: -1, y: 1},
 		bottom:    point{x: 0, y: 0},
 		leftSide: []point{
-			{x: 0, y: 0},
 			{x: -1, y: 1},
+			{x: 0, y: 0},
 			{x: 0, y: 2},
 		},
 		rightSide: []point{
@@ -110,8 +110,8 @@ var (
 			{x: 0, y: 2},
 		},
 		bottomSide: []point{
-			{x: 0, y: 0},
 			{x: -1, y: 1},
+			{x: 0, y: 0},
 			{x: 1, y: 1},
 		},
 		all: []point{
@@ -184,9 +184,6 @@ type shape struct {
 	bottom     point
 	bottomSide []point
 	all        []point
-	// points []point
-	// bottom
-	// top
 
 	name string
 }
@@ -210,7 +207,7 @@ func main() {
 		jetPattern = strings.Split(line, "")
 	}
 	// fmt.Println(fallingOrder)
-	fmt.Println("jet pattern: ", jetPattern)
+	// fmt.Println("jet pattern: ", jetPattern)
 
 	y := 0
 	rocks := 2022
