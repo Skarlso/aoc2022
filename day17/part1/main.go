@@ -13,10 +13,12 @@ var (
 		top:    point{x: 2, y: 2},
 		leftSide: []point{
 			{x: 0, y: 0},
+			{x: 1, y: 0},
 			{x: 2, y: 1},
 			{x: 2, y: 2},
 		},
 		rightSide: []point{
+			{x: 1, y: 0},
 			{x: 2, y: 0},
 			{x: 2, y: 1},
 			{x: 2, y: 2},
@@ -205,7 +207,7 @@ func main() {
 	fmt.Println("jet pattern: ", jetPattern)
 
 	y := 0
-	rocks := 1
+	rocks := 3
 	fallen := 0
 	playground := make(map[point]bool)
 	leftSide := 0
@@ -213,12 +215,13 @@ func main() {
 	jetPush := 0
 	for fallen != rocks {
 		// starting position is the highest point + 3
-		startingY := y + 3
+		// Forgot to add the lowest point!!!
 		currentRock := fallingOrder[fallen%len(fallingOrder)]
+		startingY := y + 3
 		// fmt.Println("current falling rock: ", currentRock.name)
 		// make sure we are 3 above the last fallen rock's last y coordinate considering our current falling rock's
 		// lowest point.
-		y += currentRock.bottom.y
+		// y += currentRock.bottom.y
 		current := point{x: 2, y: startingY} // This is the location of the designated zeroth coordinate of the shape.
 
 		// fmt.Println("starting point: ", current)
@@ -228,8 +231,24 @@ func main() {
 		// goes until it can no longer move.
 		canMove := true
 		for canMove {
-			display(playground, y, current, currentRock)
 			canMove = false
+			display(playground, y, current, currentRock)
+
+			currentJet := jetPattern[jetPush%len(jetPattern)]
+			// fmt.Println("jet: ", currentJet)
+			if currentJet == "<" {
+				// The x is at the left side, so this is okay.
+				// But I must also consider all points because it could blow the rock into a crevasse.
+				if current.x-1 >= leftSide && !isSomethingToTheLeft(current, currentRock, playground) {
+					current.x--
+				}
+			} else if currentJet == ">" {
+				if current.x+1+currentRock.mostRight.x < rightSide && !isSomethingToTheRight(current, currentRock, playground) {
+					current.x++
+				}
+			}
+			jetPush++
+
 			// Determine the coordinate of each piece of the shape as it falls down.
 			// let it fall until any of its coordinates hits anything
 			// current, queue = queue[0], queue[1:]
@@ -252,45 +271,54 @@ func main() {
 
 			// push the block
 
-			currentJet := jetPattern[jetPush%len(jetPattern)]
-			// fmt.Println("jet: ", currentJet)
-			if currentJet == "<" {
-				// The x is at the left side, so this is okay.
-				// But I must also consider all points because it could blow the rock into a crevasse.
-				if current.x-1 >= leftSide && !isSomethingToTheLeft(current, currentRock, playground) {
-					current.x--
-				}
-			} else if currentJet == ">" {
-				if current.x+1+currentRock.mostRight.x < rightSide && !isSomethingToTheRight(current, currentRock, playground) {
-					current.x++
-				}
-			}
-			jetPush++
+			// currentJet := jetPattern[jetPush%len(jetPattern)]
+			// // fmt.Println("jet: ", currentJet)
+			// if currentJet == "<" {
+			// 	// The x is at the left side, so this is okay.
+			// 	// But I must also consider all points because it could blow the rock into a crevasse.
+			// 	if current.x-1 >= leftSide && !isSomethingToTheLeft(current, currentRock, playground) {
+			// 		current.x--
+			// 	}
+			// } else if currentJet == ">" {
+			// 	if current.x+1+currentRock.mostRight.x < rightSide && !isSomethingToTheRight(current, currentRock, playground) {
+			// 		current.x++
+			// 	}
+			// }
+			// jetPush++
 
-			// check if something is below is. If yes, we set canMove to true so in the next round it will move.
-			if (current.y-1+currentRock.bottom.y) > 0 && !isSomethingDownwards(current, currentRock, playground) {
-				// add it to the new round, and then push the block.
-				canMove = true
-				// current.y--
-			}
+			// // check if something is below is. If yes, we set canMove to true so in the next round it will move.
+			// if (current.y-1+currentRock.bottom.y) > 0 && !isSomethingDownwards(current, currentRock, playground) {
+			// 	// add it to the new round, and then push the block.
+			// 	canMove = true
+			// 	// current.y--
+			// }
 			display(playground, y, current, currentRock)
 		}
 
+		fmt.Println("current: ", current.y)
 		// Once the rock stopped moving we add each point of it to the playground.
 		for _, p := range allPoints(current, currentRock) {
 			// fmt.Println("This is never getting called?")
 			playground[p] = true
 		}
+		display(playground, y, current, currentRock)
 
 		// The highest point is the current y + height.
+		// Y should be the PREVIOUS y...
+		fmt.Println("current.y+currentRock.top.y: ", current.y+currentRock.height)
+		fmt.Println("(current.y+currentRock.bottom.y)+(current.y+currentRock.top.y): ", (current.y+currentRock.bottom.y)+(current.y+currentRock.top.y))
+		// if current.y+currentRock.height > y {
+		// 	y = current.y + currentRock.height
+		// 	// I have to re-think this one.
+		// 	// unitsOfTall += (current.y + currentRock.top.y - unitsOfTall)
+		// }
+
 		if current.y+currentRock.height > y {
-			y += current.y + currentRock.height
-			// I have to re-think this one.
-			// unitsOfTall += (current.y + currentRock.top.y - unitsOfTall)
+			y = current.y + currentRock.height
 		}
 
+		fmt.Println("highest y is now: ", y)
 		fallen++
-		display(playground, y, current, currentRock)
 	}
 
 	fmt.Println("The tower is this tall: ", y)
