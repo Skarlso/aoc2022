@@ -16,6 +16,7 @@ func main() {
 		fmt.Println("Usage: go run part1/main.go [file]")
 		os.Exit(1)
 	}
+	decryptionKey := 811589153
 	file := os.Args[1]
 	content, _ := os.ReadFile(file)
 	split := strings.Split(string(content), "\n")
@@ -25,8 +26,8 @@ func main() {
 	for i, line := range split {
 		var n int
 		fmt.Sscanf(line, "%d", &n)
-		originalNumber = append(originalNumber, n)
-		indexes[i] = number{value: n, originalIndex: i}
+		originalNumber = append(originalNumber, n*decryptionKey)
+		indexes[i] = number{value: n * decryptionKey, originalIndex: i}
 	}
 
 	index := func(n number) int {
@@ -37,34 +38,36 @@ func main() {
 		}
 		return -1
 	}
-	for originalIndex, n := range originalNumber {
-		num := number{value: n, originalIndex: originalIndex}
+	for times := 0; times < 10; times++ {
+		for originalIndex, n := range originalNumber {
+			num := number{value: n, originalIndex: originalIndex}
 
-		oldIndex := index(num)
+			oldIndex := index(num)
 
-		newIndex := mod((oldIndex + n), len(originalNumber)-1)
+			newIndex := mod((oldIndex + n), len(originalNumber)-1)
 
-		if newIndex == 0 {
-			newIndex = len(originalNumber) - 1
-		}
-		if newIndex >= len(originalNumber)-1 {
-			newIndex = 0
-		}
-
-		oldValue := indexes[newIndex]
-		indexes[newIndex] = num
-
-		if newIndex > oldIndex {
-			for k := newIndex - 1; k >= oldIndex; k-- {
-				t := indexes[k]
-				indexes[k] = oldValue
-				oldValue = t
+			if newIndex == 0 {
+				newIndex = len(originalNumber) - 1
 			}
-		} else if newIndex < oldIndex {
-			for k := newIndex + 1; k <= oldIndex; k++ {
-				t := indexes[k]
-				indexes[k] = oldValue
-				oldValue = t
+			if newIndex >= len(originalNumber)-1 {
+				newIndex = 0
+			}
+
+			oldValue := indexes[newIndex]
+			indexes[newIndex] = num
+
+			if newIndex > oldIndex {
+				for k := newIndex - 1; k >= oldIndex; k-- {
+					t := indexes[k]
+					indexes[k] = oldValue
+					oldValue = t
+				}
+			} else if newIndex < oldIndex {
+				for k := newIndex + 1; k <= oldIndex; k++ {
+					t := indexes[k]
+					indexes[k] = oldValue
+					oldValue = t
+				}
 			}
 		}
 	}
